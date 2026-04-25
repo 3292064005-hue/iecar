@@ -1,0 +1,305 @@
+#ifndef CAR_PROJECT_CONFIG_SHARED_H__
+#define CAR_PROJECT_CONFIG_SHARED_H__
+
+#include "protocol_contract_generated.h"
+
+#ifndef CAR_PROJECT_VERSION_MAJOR
+#define CAR_PROJECT_VERSION_MAJOR   2
+#endif
+#ifndef CAR_PROJECT_VERSION_MINOR
+#define CAR_PROJECT_VERSION_MINOR   3
+#endif
+
+#ifndef CAR_PROTOCOL_VERSION_MAJOR
+#define CAR_PROTOCOL_VERSION_MAJOR  2u
+#endif
+#ifndef CAR_PROTOCOL_VERSION_MINOR
+#define CAR_PROTOCOL_VERSION_MINOR  3u
+#endif
+#ifndef CAR_PROTOCOL_COMPAT_V1
+#define CAR_PROTOCOL_COMPAT_V1      1u
+#endif
+#ifndef CAR_PROTOCOL_REJECT_VERSION_MISMATCH
+#define CAR_PROTOCOL_REJECT_VERSION_MISMATCH 1u
+#endif
+#ifndef CAR_VISUAL_PROTOCOL_COMPAT_V1
+#define CAR_VISUAL_PROTOCOL_COMPAT_V1 1u
+#endif
+#ifndef CAR_LINK_FIELD5_IS_ROLE
+#define CAR_LINK_FIELD5_IS_ROLE     1u
+#endif
+#ifndef CAR_LINK_STRICT_ROLE_MATRIX
+#define CAR_LINK_STRICT_ROLE_MATRIX 1u
+#endif
+#ifndef CAR_LINK_COMPAT_TASK_FIELD
+#define CAR_LINK_COMPAT_TASK_FIELD  1u
+#endif
+#ifndef CAR_DIAG_RING_SIZE
+#define CAR_DIAG_RING_SIZE          32u
+#endif
+#ifndef CAR_OPENMV_REQUIRE_FIRST_FRAME
+#define CAR_OPENMV_REQUIRE_FIRST_FRAME 1u
+#endif
+
+#ifndef CAR_OPENMV_FRAME_SIZE
+#define CAR_OPENMV_FRAME_SIZE       12u
+#endif
+#ifndef CAR_OPENMV_MAGIC0
+#define CAR_OPENMV_MAGIC0           0xAAu
+#endif
+#ifndef CAR_OPENMV_MAGIC1
+#define CAR_OPENMV_MAGIC1           0xFFu
+#endif
+#ifndef CAR_OPENMV_TAIL
+#define CAR_OPENMV_TAIL             0xCCu
+#endif
+#ifndef CAR_OPENMV_TARGET_X
+#define CAR_OPENMV_TARGET_X         160
+#endif
+#ifndef CAR_OPENMV_MAX_X
+#define CAR_OPENMV_MAX_X            320
+#endif
+#ifndef CAR_OPENMV_LINE_LOST_SPEED
+#define CAR_OPENMV_LINE_LOST_SPEED  30
+#endif
+#ifndef CAR_OPENMV_BLACK_TRIGGER
+#define CAR_OPENMV_BLACK_TRIGGER    3u
+#endif
+#ifndef CAR_OPENMV_BOARD_Y_TRIGGER
+#define CAR_OPENMV_BOARD_Y_TRIGGER  120
+#endif
+#ifndef CAR_OPENMV_BOARD_DEBOUNCE
+#define CAR_OPENMV_BOARD_DEBOUNCE   8u
+#endif
+#ifndef CAR_OPENMV_BOARD_HOLD_MS
+#define CAR_OPENMV_BOARD_HOLD_MS    210u
+#endif
+#ifndef CAR_OPENMV_FRESHNESS_MS
+#define CAR_OPENMV_FRESHNESS_MS     400u
+#endif
+
+#ifndef CAR_OPENMV_USART3_ENABLED
+#define CAR_OPENMV_USART3_ENABLED 0u
+#endif
+#ifndef CAR_OPENMV_UART4_ENABLED
+#define CAR_OPENMV_UART4_ENABLED 1u
+#endif
+#ifndef CAR_LINK_RX_BUF_SIZE
+#define CAR_LINK_RX_BUF_SIZE       100u
+#endif
+#ifndef CAR_COMPAT_RX_BUF_SIZE
+#define CAR_COMPAT_RX_BUF_SIZE     100u
+#endif
+#ifndef CAR_OPENMV_RX_BUF_SIZE
+#define CAR_OPENMV_RX_BUF_SIZE     100u
+#endif
+#ifndef CAR_K210_RX_BUF_SIZE
+#define CAR_K210_RX_BUF_SIZE       100u
+#endif
+
+#ifndef CAR_K210_FRAME_SIZE
+#define CAR_K210_FRAME_SIZE         12u
+#endif
+#ifndef CAR_K210_MAGIC0
+#define CAR_K210_MAGIC0             0xAAu
+#endif
+#ifndef CAR_K210_MAGIC1
+#define CAR_K210_MAGIC1             0xFFu
+#endif
+#ifndef CAR_K210_TAIL
+#define CAR_K210_TAIL               0xCCu
+#endif
+#ifndef CAR_K210_CLASS_COUNT
+#define CAR_K210_CLASS_COUNT        8u
+#endif
+#ifndef CAR_K210_SCAN_LOCK_THRESHOLD
+#define CAR_K210_SCAN_LOCK_THRESHOLD 12
+#endif
+#ifndef CAR_K210_DECISION_MIN_COUNT
+#define CAR_K210_DECISION_MIN_COUNT 2
+#endif
+#ifndef CAR_K210_CONFIDENCE_MIN
+#define CAR_K210_CONFIDENCE_MIN     55u
+#endif
+#ifndef CAR_K210_FRESHNESS_MS
+#define CAR_K210_FRESHNESS_MS       600u
+#endif
+
+#ifndef CAR_LINK_FRAME_SIZE
+#define CAR_LINK_FRAME_SIZE         11u
+#endif
+#ifndef CAR_LINK_MAGIC0
+#define CAR_LINK_MAGIC0             0xAAu
+#endif
+#ifndef CAR_LINK_MAGIC1
+#define CAR_LINK_MAGIC1             0xFFu
+#endif
+#ifndef CAR_LINK_TAIL
+#define CAR_LINK_TAIL               0xCCu
+#endif
+#ifndef CAR_LINK_MSG_SET_DETECT
+#define CAR_LINK_MSG_SET_DETECT     1u
+#endif
+#ifndef CAR_LINK_MSG_LEAVE
+#define CAR_LINK_MSG_LEAVE          2u
+#endif
+#ifndef CAR_LINK_MSG_GO
+#define CAR_LINK_MSG_GO             3u
+#endif
+#ifndef CAR_LINK_MSG_HEARTBEAT
+#define CAR_LINK_MSG_HEARTBEAT      4u
+#endif
+#ifndef CAR_LINK_MSG_ACK
+#define CAR_LINK_MSG_ACK            0x7Fu
+#endif
+#ifndef CAR_LINK_RETRY_COUNT
+#define CAR_LINK_RETRY_COUNT        6u
+#endif
+#ifndef CAR_LINK_RETRY_INTERVAL_MS
+#define CAR_LINK_RETRY_INTERVAL_MS  5u
+#endif
+#ifndef CAR_LINK_ACK_TIMEOUT_MS
+#define CAR_LINK_ACK_TIMEOUT_MS     80u
+#endif
+#ifndef CAR_LINK_FRESHNESS_MS
+#define CAR_LINK_FRESHNESS_MS       1000u
+#endif
+#ifndef CAR_LINK_HEARTBEAT_INTERVAL_MS
+#define CAR_LINK_HEARTBEAT_INTERVAL_MS 300u
+#endif
+#ifndef CAR_LINK_HEARTBEAT_STARTUP_GRACE_MS
+#define CAR_LINK_HEARTBEAT_STARTUP_GRACE_MS 200u
+#endif
+
+
+#ifndef CAR_TASK_MASK_TASK1
+#define CAR_TASK_MASK_TASK1          0x01u
+#endif
+#ifndef CAR_TASK_MASK_TASK2
+#define CAR_TASK_MASK_TASK2          0x02u
+#endif
+#ifndef CAR_TASK_MASK_TASK3
+#define CAR_TASK_MASK_TASK3          0x04u
+#endif
+#ifndef CAR_ALLOWED_TASK_MASK
+#define CAR_ALLOWED_TASK_MASK        (CAR_TASK_MASK_TASK1 | CAR_TASK_MASK_TASK2 | CAR_TASK_MASK_TASK3)
+#endif
+#ifndef CAR_LEGACY_TASK_MASK
+#define CAR_LEGACY_TASK_MASK         0x00u
+#endif
+#ifndef CAR_ROLE_ID
+#define CAR_ROLE_ID                  0u
+#endif
+
+#ifndef CAR_K210_POSITION_REQUIRED
+#define CAR_K210_POSITION_REQUIRED   1u
+#endif
+#ifndef CAR_K210_POSITION_MIN_X
+#define CAR_K210_POSITION_MIN_X      1u
+#endif
+#ifndef CAR_K210_POSITION_MIN_Y
+#define CAR_K210_POSITION_MIN_Y      1u
+#endif
+#ifndef CAR_K210_POSITION_MAX_X
+#define CAR_K210_POSITION_MAX_X      224u
+#endif
+#ifndef CAR_K210_POSITION_MAX_Y
+#define CAR_K210_POSITION_MAX_Y      224u
+#endif
+
+#ifndef CAR_LINK_DEGRADED_TIMEOUT_MS
+#define CAR_LINK_DEGRADED_TIMEOUT_MS 1500u
+#endif
+#ifndef CAR_LINK_LOST_TIMEOUT_MS
+#define CAR_LINK_LOST_TIMEOUT_MS     3000u
+#endif
+
+#ifndef CAR_K210_SCAN_SAMPLE_MS
+#define CAR_K210_SCAN_SAMPLE_MS     1000u
+#endif
+#ifndef CAR_TASK_LOOP_DELAY_MS
+#define CAR_TASK_LOOP_DELAY_MS      18u
+#endif
+#ifndef CAR_TASK_POLL_DELAY_MS
+#define CAR_TASK_POLL_DELAY_MS      20u
+#endif
+#ifndef CAR_WAIT_BUTTON_RELEASE_MS
+#define CAR_WAIT_BUTTON_RELEASE_MS  500u
+#endif
+#ifndef CAR_RETURN_BUTTON_POLL_MS
+#define CAR_RETURN_BUTTON_POLL_MS   50u
+#endif
+#ifndef CAR_REMOTE_POST_LEAVE_DELAY_MS
+#define CAR_REMOTE_POST_LEAVE_DELAY_MS 4000u
+#endif
+#ifndef CAR_STATION_BRAKE_DELAY_MS
+#define CAR_STATION_BRAKE_DELAY_MS  400u
+#endif
+#ifndef CAR_STATION_STOP_DELAY_MS
+#define CAR_STATION_STOP_DELAY_MS   200u
+#endif
+#ifndef CAR_STATION_RELEASE_DELAY_MS
+#define CAR_STATION_RELEASE_DELAY_MS 300u
+#endif
+#ifndef CAR_SAFE_STOP_BLINK_MS
+#define CAR_SAFE_STOP_BLINK_MS      100u
+#endif
+#ifndef CAR_TURN_SETTLE_MS
+#define CAR_TURN_SETTLE_MS          10u
+#endif
+#ifndef CAR_U_TURN_SPEED
+#define CAR_U_TURN_SPEED            15
+#endif
+#ifndef CAR_U_TURN_DELAY_MS
+#define CAR_U_TURN_DELAY_MS         600u
+#endif
+#ifndef CAR_RETURN_STOP_DELAY_MS
+#define CAR_RETURN_STOP_DELAY_MS    1000u
+#endif
+#ifndef CAR_K210_INVALID_TARGET
+#define CAR_K210_INVALID_TARGET     0u
+#endif
+#ifndef CAR_LINE_PID_KP
+#define CAR_LINE_PID_KP             0.10f
+#endif
+#ifndef CAR_LINE_MAX_CORRECTION
+#define CAR_LINE_MAX_CORRECTION     10
+#endif
+#ifndef CAR_DEFAULT_SPEED
+#define CAR_DEFAULT_SPEED           33
+#endif
+#ifndef CAR_TURN_SPEED
+#define CAR_TURN_SPEED              40
+#endif
+#ifndef CAR_TURN_LEFT_DELAY_MS
+#define CAR_TURN_LEFT_DELAY_MS      220u
+#endif
+#ifndef CAR_TURN_RIGHT_DELAY_MS
+#define CAR_TURN_RIGHT_DELAY_MS     250u
+#endif
+#ifndef CAR_START_BUTTON_DEBOUNCE_MS
+#define CAR_START_BUTTON_DEBOUNCE_MS 300u
+#endif
+#ifndef CAR_REMOTE_SIGNAL_TIMEOUT_MS
+#define CAR_REMOTE_SIGNAL_TIMEOUT_MS 15000u
+#endif
+#ifndef CAR_TASK_TURN_HOLD_TICKS
+#define CAR_TASK_TURN_HOLD_TICKS    300
+#endif
+#ifndef CAR_TASK_ENTRY_TURN_HOLD_TICKS
+#define CAR_TASK_ENTRY_TURN_HOLD_TICKS 40000
+#endif
+#ifndef CAR_PATH_STACK_CAPACITY
+#define CAR_PATH_STACK_CAPACITY     10u
+#endif
+#ifndef CAR_PATH_STACK_INIT_DEPTH
+#define CAR_PATH_STACK_INIT_DEPTH   1u
+#endif
+#ifndef CAR_LEGACY_TURN_SPEED
+#define CAR_LEGACY_TURN_SPEED       500
+#endif
+#ifndef CAR_LEGACY_TURN_DELAY_MS
+#define CAR_LEGACY_TURN_DELAY_MS    500u
+#endif
+
+#endif /* CAR_PROJECT_CONFIG_SHARED_H__ */
