@@ -19,28 +19,21 @@
 
 //THUMB指令不支持汇编内联
 //采用如下方法实现执行汇编指令WFI  
-__asm void WFI_SET(void)
+void WFI_SET(void)
 {
-	WFI;		  
+	__WFI();
 }
-//关闭所有中断(但是不包括fault和NMI中断)
-__asm void INTX_DISABLE(void)
+void INTX_DISABLE(void)
 {
-	CPSID   I
-	BX      LR	  
+	__disable_irq();
 }
-//开启所有中断
-__asm void INTX_ENABLE(void)
+void INTX_ENABLE(void)
 {
-	CPSIE   I
-	BX      LR  
+	__enable_irq();
 }
-//设置栈顶地址
-//addr:栈顶地址
-__asm void MSR_MSP(u32 addr) 
+void MSR_MSP(u32 addr)
 {
-	MSR MSP, r0 			//set Main Stack value
-	BX r14
+	__set_MSP(addr);
 }
 
 int gxt_abs(int a)

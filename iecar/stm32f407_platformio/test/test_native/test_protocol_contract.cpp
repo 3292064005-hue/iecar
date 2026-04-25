@@ -19,6 +19,14 @@ int val4_cnt = 0;
 static k210_observation_t left_obs;
 static k210_observation_t right_obs;
 
+void setUp(void)
+{
+}
+
+void tearDown(void)
+{
+}
+
 u8 K210_GetObservation(u8 camera_id, k210_observation_t *out)
 {
     if(out == 0)

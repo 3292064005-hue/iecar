@@ -1,6 +1,7 @@
 #include "tim6.h"
 
-
+extern int time_up;
+extern int ttt;
 
 void TIM9_INIT(u32 arr,u32 psc)
 {		 					 

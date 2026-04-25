@@ -3,6 +3,7 @@
 
 long long int system_time=0;
 char sss[20];
+u8 flag_go=0;
 void JumpToBootloader(void);
 
 int main(void)
