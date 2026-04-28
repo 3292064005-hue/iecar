@@ -1,0 +1,54 @@
+{
+  "platformio_cli_min": "6.1.0",
+  "platformio_cli_max_exclusive": "7.0.0",
+  "required_envs": [
+    "car1",
+    "car2",
+    "native"
+  ],
+  "required_commands": [
+    "pio run -e car1",
+    "pio run -e car2",
+    "pio test -e native"
+  ],
+  "ststm32_platform_constraint": "platformio/ststm32@^19.0.0",
+  "required_build_src_filters": [
+    "+<COMMON/CHE/*_shared.c>",
+    "+<COMMON/ROLE_SHARED/USER/*.c>",
+    "+<COMMON/ROLE_SHARED/SYSTEM/*.c>",
+    "+<COMMON/ROLE_SHARED/SYSTEM/ANO_V7/*.c>",
+    "+<COMMON/ROLE_SHARED/SYSTEM/delay/*.c>",
+    "+<COMMON/ROLE_SHARED/SYSTEM/oled/*.c>",
+    "+<COMMON/ROLE_SHARED/SYSTEM/pid/*.c>",
+    "+<COMMON/ROLE_SHARED/SYSTEM/sys/*.c>",
+    "+<COMMON/ROLE_SHARED/MOTOR_shuanghuan/*.c>"
+  ],
+  "forbidden_build_src_filters": [
+    "+<car1/USER/main.c>",
+    "+<car1/USER/stm32f4xx_it.c>",
+    "+<car2/USER/main.c>",
+    "+<car2/USER/stm32f4xx_it.c>",
+    "+<car1/SYSTEM/ANO_V7/*.c>",
+    "+<car2/SYSTEM/ANO_V7/*.c>",
+    "+<car1/SYSTEM/delay/*.c>",
+    "+<car2/SYSTEM/delay/*.c>",
+    "+<car1/SYSTEM/oled/*.c>",
+    "+<car2/SYSTEM/oled/*.c>",
+    "+<car1/SYSTEM/pid/*.c>",
+    "+<car2/SYSTEM/pid/*.c>",
+    "+<car1/SYSTEM/sys/*.c>",
+    "+<car2/SYSTEM/sys/*.c>",
+    "+<car1/MOTOR_shuanghuan/*.c>",
+    "+<car2/MOTOR_shuanghuan/*.c>",
+    "+<car1/SYSTEM/CHE/*.c>",
+    "+<car2/SYSTEM/CHE/*.c>",
+    "+<car1/SYSTEM/CHE/DRIVER.c>",
+    "+<car2/SYSTEM/CHE/DRIVER.c>",
+    "+<car1/SYSTEM/CHE/task1.c>",
+    "+<car2/SYSTEM/CHE/task1.c>"
+  ],
+  "required_build_flags": [
+    "-Isrc/COMMON/PLATFORM",
+    "-Isrc/COMMON/ROLE_SHARED/SYSTEM/STRATEGY/common"
+  ]
+}

@@ -9,6 +9,14 @@
 
 typedef enum
 {
+    CAR_DIAG_LEVEL_INFO = 0,
+    CAR_DIAG_LEVEL_WARN = 1,
+    CAR_DIAG_LEVEL_ERROR = 2,
+    CAR_DIAG_LEVEL_FATAL = 3
+} car_diag_level_t;
+
+typedef enum
+{
     CAR_DIAG_NONE = 0,
     CAR_DIAG_TASK_STATE = 1,
     CAR_DIAG_TASK_SAFE_STOP = 2,
@@ -48,7 +56,7 @@ extern volatile u16 car_diag_overrun_count;
  * 入参: event 为 car_diag_event_t；arg0~arg2 为调用方定义的轻量参数。
  * 出参: 无，记录写入固定长度环形缓存。
  * 异常: 环形缓存满时覆盖最旧槽位并递增 overrun 计数，不阻塞实时链路。
- * 边界: ISR 和主循环均可调用，但不做锁保护；只用于诊断，不作为业务判定依据。
+ * 边界: ISR 和主循环均可调用；内部仅保护 ring 元数据与短记录复制，不包裹 OLED/串口输出。
  */
 void CarDiag_Record(u8 event, u8 arg0, u8 arg1, u8 arg2);
 
@@ -78,5 +86,32 @@ void CarDiag_Clear(void);
  * 边界: 只读最近记录，不消费环形缓存。
  */
 u8 CarDiag_GetLatest(car_diag_record_t *out);
+
+/*
+ * 功能: 复制最近的诊断记录，供串口 dump、OLED 摘要或 replay 对齐使用。
+ * 入参: out 为输出数组；capacity 为最多复制条数。
+ * 出参: 返回实际复制条数，按从旧到新的顺序排列。
+ * 异常: out 为空或 capacity 为 0 时返回 0。
+ * 边界: 该函数不消费 ring buffer；复制过程在短临界区内完成，用于诊断显示而不作为业务判定依据。
+ */
+u8 CarDiag_CopyRecent(car_diag_record_t *out, u8 capacity);
+
+/*
+ * 功能: 将一条诊断记录格式化成短文本，适配 OLED/串口输出。
+ * 入参: record 为记录；out 为字符缓冲；capacity 为缓冲长度。
+ * 出参: 返回 1 表示格式化成功，返回 0 表示参数非法。
+ * 异常: 缓冲过短时仍写入截断字符串并以 NUL 结尾。
+ * 边界: 不分配内存，不依赖 printf 浮点支持。
+ */
+u8 CarDiag_FormatRecord(const car_diag_record_t *record, char *out, u8 capacity);
+
+/*
+ * 功能: 在 OLED 指定行显示最近一条诊断摘要，形成现场可消费出口。
+ * 入参: y 为 OLED 行坐标。
+ * 出参: 返回 1 表示存在诊断并显示，返回 0 表示暂无诊断。
+ * 异常: OLED 底层不可用时本函数不感知，仍按调用完成处理。
+ * 边界: 仅显示最近一条，完整 dump 应使用 CarDiag_CopyRecent。
+ */
+u8 CarDiag_ShowLatestSummary(u8 y);
 
 #endif /* CAR_DIAG_SHARED_H__ */

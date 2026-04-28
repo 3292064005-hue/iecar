@@ -85,6 +85,90 @@ void test_k210_openmv_real_parsers(void)
     TEST_ASSERT_EQUAL_UINT8(4u, o.black_num);
 }
 
+void test_stream_parser_accepts_contiguous_frames(void)
+{
+    car_protocol_stream_parser_t parser;
+    u8 out[HOST_OPENMV_FRAME_SIZE] = {0};
+    u8 frame1[HOST_OPENMV_FRAME_SIZE] = {
+        HOST_MAGIC0, HOST_MAGIC1, HOST_PROTOCOL_VERSION_BYTE, 0u, 160u,
+        0u, 121u, 0u, 3u, 4u, 0u, HOST_TAIL
+    };
+    u8 frame2[HOST_OPENMV_FRAME_SIZE] = {
+        HOST_MAGIC0, HOST_MAGIC1, HOST_PROTOCOL_VERSION_BYTE, 0u, 162u,
+        0u, 123u, 0u, 5u, 6u, 0u, HOST_TAIL
+    };
+    frame1[10] = CarProtocol_Checksum8(frame1, 10u);
+    frame2[10] = CarProtocol_Checksum8(frame2, 10u);
+    CarProtocol_StreamInit(&parser);
+    for(u8 i = 0u; i < HOST_OPENMV_FRAME_SIZE - 1u; ++i)
+    {
+        TEST_ASSERT_EQUAL_UINT8(0u, CarProtocol_StreamFeedByte(&parser, frame1[i], HOST_MAGIC0, HOST_MAGIC1, HOST_OPENMV_FRAME_SIZE, HOST_TAIL, 0u, 10u, 10u, out));
+    }
+    TEST_ASSERT_EQUAL_UINT8(1u, CarProtocol_StreamFeedByte(&parser, frame1[HOST_OPENMV_FRAME_SIZE - 1u], HOST_MAGIC0, HOST_MAGIC1, HOST_OPENMV_FRAME_SIZE, HOST_TAIL, 0u, 10u, 10u, out));
+    TEST_ASSERT_EQUAL_MEMORY(frame1, out, HOST_OPENMV_FRAME_SIZE);
+    for(u8 i = 0u; i < HOST_OPENMV_FRAME_SIZE - 1u; ++i)
+    {
+        TEST_ASSERT_EQUAL_UINT8(0u, CarProtocol_StreamFeedByte(&parser, frame2[i], HOST_MAGIC0, HOST_MAGIC1, HOST_OPENMV_FRAME_SIZE, HOST_TAIL, 0u, 10u, 10u, out));
+    }
+    TEST_ASSERT_EQUAL_UINT8(1u, CarProtocol_StreamFeedByte(&parser, frame2[HOST_OPENMV_FRAME_SIZE - 1u], HOST_MAGIC0, HOST_MAGIC1, HOST_OPENMV_FRAME_SIZE, HOST_TAIL, 0u, 10u, 10u, out));
+    TEST_ASSERT_EQUAL_MEMORY(frame2, out, HOST_OPENMV_FRAME_SIZE);
+}
+
+
+void test_carlink_stream_parser_legacy_and_checksum_resync(void)
+{
+    car_protocol_stream_parser_t parser;
+    u8 out[HOST_CARLINK_FRAME_SIZE] = {0};
+    u8 legacy[HOST_CARLINK_FRAME_SIZE] = {
+        HOST_MAGIC0, HOST_MAGIC1, HOST_CARLINK_MSG_LEAVE, 0u, 0u, 0u,
+        0u, 0u, 0u, 0u, HOST_TAIL
+    };
+    u8 good[HOST_CARLINK_FRAME_SIZE] = {
+        HOST_MAGIC0, HOST_MAGIC1, HOST_CARLINK_MSG_SET_DETECT, 5u, 9u, HOST_TAIL,
+        HOST_PROTOCOL_VERSION_MAJOR, HOST_PROTOCOL_VERSION_MINOR, 0u, 0u, HOST_TAIL
+    };
+    u8 bad_then_good[16u] = {
+        HOST_MAGIC0, HOST_MAGIC1, HOST_CARLINK_MSG_SET_DETECT, 1u, 1u,
+        HOST_MAGIC0, HOST_MAGIC1, HOST_CARLINK_MSG_SET_DETECT, 5u, 9u, HOST_TAIL,
+        HOST_PROTOCOL_VERSION_MAJOR, HOST_PROTOCOL_VERSION_MINOR, 0u, 0u, HOST_TAIL
+    };
+    good[8] = CarProtocol_Checksum8(good, 8u);
+    bad_then_good[13] = good[8];
+
+    CarProtocol_StreamInit(&parser);
+    for(u8 i = 0u; i < HOST_CARLINK_FRAME_SIZE - 1u; ++i)
+    {
+        TEST_ASSERT_EQUAL_UINT8(0u, CarProtocol_StreamFeedCarLinkByte(&parser, legacy[i], out));
+    }
+    TEST_ASSERT_EQUAL_UINT8(1u, CarProtocol_StreamFeedCarLinkByte(&parser, legacy[HOST_CARLINK_FRAME_SIZE - 1u], out));
+    TEST_ASSERT_EQUAL_MEMORY(legacy, out, HOST_CARLINK_FRAME_SIZE);
+
+    {
+        u8 collision_legacy[HOST_CARLINK_FRAME_SIZE] = {
+            HOST_MAGIC0, HOST_MAGIC1, HOST_CARLINK_MSG_GO, 84u, 0u, 0u,
+            0u, 0u, 0u, 0u, HOST_TAIL
+        };
+        TEST_ASSERT_EQUAL_UINT8(0u, CarProtocol_Checksum8(collision_legacy, 8u));
+        TEST_ASSERT_EQUAL_UINT8(1u, CarProtocol_CarLinkFrameIsValid(collision_legacy, HOST_CARLINK_FRAME_SIZE));
+        CarProtocol_StreamInit(&parser);
+        for(u8 i = 0u; i < HOST_CARLINK_FRAME_SIZE - 1u; ++i)
+        {
+            TEST_ASSERT_EQUAL_UINT8(0u, CarProtocol_StreamFeedCarLinkByte(&parser, collision_legacy[i], out));
+        }
+        TEST_ASSERT_EQUAL_UINT8(1u, CarProtocol_StreamFeedCarLinkByte(&parser, collision_legacy[HOST_CARLINK_FRAME_SIZE - 1u], out));
+        TEST_ASSERT_EQUAL_MEMORY(collision_legacy, out, HOST_CARLINK_FRAME_SIZE);
+    }
+
+    CarProtocol_StreamInit(&parser);
+    for(u8 i = 0u; i < 15u; ++i)
+    {
+        TEST_ASSERT_EQUAL_UINT8(0u, CarProtocol_StreamFeedCarLinkByte(&parser, bad_then_good[i], out));
+    }
+    TEST_ASSERT_EQUAL_UINT8(1u, CarProtocol_StreamFeedCarLinkByte(&parser, bad_then_good[15], out));
+    TEST_ASSERT_EQUAL_MEMORY(good, out, HOST_CARLINK_FRAME_SIZE);
+    TEST_ASSERT_TRUE(parser.resync_count >= 1u);
+}
+
 void test_carlink_compat_normalized_sender_role(void)
 {
     u8 frame[HOST_CARLINK_FRAME_SIZE] = {
@@ -132,6 +216,8 @@ int main(int argc, char **argv)
     (void)argv;
     UNITY_BEGIN();
     RUN_TEST(test_k210_openmv_real_parsers);
+        RUN_TEST(test_stream_parser_accepts_contiguous_frames);
+RUN_TEST(test_carlink_stream_parser_legacy_and_checksum_resync);
     RUN_TEST(test_carlink_compat_normalized_sender_role);
     RUN_TEST(test_strategy_invalid_and_valid_detect);
     return UNITY_END();

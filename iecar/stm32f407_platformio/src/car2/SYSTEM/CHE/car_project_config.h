@@ -11,6 +11,7 @@
 #define CAR_ALLOWED_TASK_MASK        (CAR_TASK_MASK_TASK2 | CAR_TASK_MASK_TASK3)
 #define CAR_LEGACY_TASK_MASK         0u
 #define CAR_OPENMV_BOARD_HOLD_MS     300u
+#define CAR_LINK_USART1_DEBUG_RX_ENABLED 1u
 
 #include "../../../COMMON/CHE/car_project_config_shared.h"
 

@@ -1,3 +1,5 @@
+#include "k210it.h"
+#include "car_mainchain.h"
 #include "protocol_core_shared.h"
 int aaa,bbb;
 int left_max,right_max;
@@ -16,6 +18,22 @@ volatile long long int k210_right_last_rx_time = 0;
 volatile u8 k210_left_has_valid_frame = 0;
 volatile u8 k210_right_has_valid_frame = 0;
 volatile u16 k210_bad_frame_count = 0;
+static car_protocol_stream_parser_t k210_left_stream;
+static car_protocol_stream_parser_t k210_right_stream;
+
+static void k210_copy_wire_frame_to_rxbuf(volatile u8 *buf, const u8 *wire)
+{
+    u8 i;
+    if(buf == 0 || wire == 0)
+    {
+        return;
+    }
+    buf[0] = CAR_K210_FRAME_SIZE;
+    for(i = 0u; i < CAR_K210_FRAME_SIZE; ++i)
+    {
+        buf[(u8)(i + 1u)] = wire[i];
+    }
+}
 
 static u8 k210_observation_mask_from_array(const u8 *target)
 {
@@ -165,6 +183,7 @@ void USART6_IRQHandler(void)
     uint8_t clear = 0;
     static uint8_t Rx_Sta = 1;
     static uint8_t Rx_Overflow = 0;
+    static uint8_t Rx_Stream_Delivered = 0;
     if(USART_GetITStatus(USART6, USART_IT_RXNE) != RESET)
     {
         res =USART6->DR;
@@ -172,7 +191,16 @@ void USART6_IRQHandler(void)
         {
             if(Rx_Sta < sizeof(USART6_RX_BUF))
             {
+                u8 wire[CAR_K210_FRAME_SIZE];
                 USART6_RX_BUF[Rx_Sta++] = res;
+                if(CarProtocol_StreamFeedByte(&k210_right_stream, res, CAR_K210_MAGIC0, CAR_K210_MAGIC1, CAR_K210_FRAME_SIZE, CAR_K210_TAIL, 0u, (u8)(CAR_K210_FRAME_SIZE - 2u), (u8)(CAR_K210_FRAME_SIZE - 2u), wire))
+                {
+                    k210_copy_wire_frame_to_rxbuf(USART6_RX_BUF, wire);
+                    Rx_Stream_Delivered = 1u;
+                    bbb++;
+                    ZSP_DEAL2();
+                    Rx_Sta = 1u;
+                }
             }
             else
             {
@@ -186,17 +214,22 @@ void USART6_IRQHandler(void)
     {
         clear = USART6->SR;
         clear = USART6->DR;
+        (void)clear;
         if(Rx_Overflow == 0)
         {
             USART6_RX_BUF[0] = Rx_Sta - 1;
-            bbb++;
-            ZSP_DEAL2();
+            if(Rx_Stream_Delivered == 0u && USART6_RX_BUF[0] != 0u)
+            {
+                bbb++;
+                ZSP_DEAL2();
+            }
         }
         else
         {
             USART6_RX_BUF[0] = 0;
             Rx_Overflow = 0;
         }
+        Rx_Stream_Delivered = 0u;
         Rx_Sta = 1;
     }
 }
@@ -208,6 +241,7 @@ void UART5_IRQHandler(void)
     uint8_t clear = 0;
     static uint8_t Rx_Sta = 1;
     static uint8_t Rx_Overflow = 0;
+    static uint8_t Rx_Stream_Delivered = 0;
     if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET)
     {
         res =UART5->DR;
@@ -215,7 +249,16 @@ void UART5_IRQHandler(void)
         {
             if(Rx_Sta < sizeof(USART5_RX_BUF))
             {
+                u8 wire[CAR_K210_FRAME_SIZE];
                 USART5_RX_BUF[Rx_Sta++] = res;
+                if(CarProtocol_StreamFeedByte(&k210_left_stream, res, CAR_K210_MAGIC0, CAR_K210_MAGIC1, CAR_K210_FRAME_SIZE, CAR_K210_TAIL, 0u, (u8)(CAR_K210_FRAME_SIZE - 2u), (u8)(CAR_K210_FRAME_SIZE - 2u), wire))
+                {
+                    k210_copy_wire_frame_to_rxbuf(USART5_RX_BUF, wire);
+                    Rx_Stream_Delivered = 1u;
+                    aaa++;
+                    ZSP_DEAL1();
+                    Rx_Sta = 1u;
+                }
             }
             else
             {
@@ -229,17 +272,22 @@ void UART5_IRQHandler(void)
     {
         clear = UART5->SR;
         clear = UART5->DR;
+        (void)clear;
         if(Rx_Overflow == 0)
         {
             USART5_RX_BUF[0] = Rx_Sta - 1;
-            aaa++;
-            ZSP_DEAL1();
+            if(Rx_Stream_Delivered == 0u && USART5_RX_BUF[0] != 0u)
+            {
+                aaa++;
+                ZSP_DEAL1();
+            }
         }
         else
         {
             USART5_RX_BUF[0] = 0;
             Rx_Overflow = 0;
         }
+        Rx_Stream_Delivered = 0u;
         Rx_Sta = 1;
     }
 }

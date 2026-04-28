@@ -1,3 +1,5 @@
+#include "car_ctrl.h"
+#include "car_mainchain.h"
 u8 openmv_num=0;
 int detect_num=0;
 u8 car_sta=0;
@@ -14,6 +16,9 @@ int time_up=0;
 int Speed = CAR_DEFAULT_SPEED;
 int Speed1;
 int Speed2;
+volatile u16 car_line_lost_ticks = 0u;
+volatile u16 car_line_seen_recover_ticks = 0u;
+volatile int car_line_last_valid_center_x = CAR_OPENMV_TARGET_X;
 
 void Car_SetLineSpeed(int new_speed)
 {
@@ -60,6 +65,15 @@ u8 Car_BuildLineOutput(car_line_output_t *out)
 
     if(openmvdata[0] != 0)
     {
+        car_line_last_valid_center_x = openmvdata[0];
+        if(car_line_seen_recover_ticks < CAR_OPENMV_LINE_LOST_RECOVER_TICKS)
+        {
+            car_line_seen_recover_ticks++;
+        }
+        else
+        {
+            car_line_lost_ticks = 0u;
+        }
         vel = Car_ComputeLineCorrection(openmvdata[0]);
         Speed1 = Speed + vel;
         Speed2 = Speed - vel;
@@ -76,8 +90,22 @@ u8 Car_BuildLineOutput(car_line_output_t *out)
         return 1u;
     }
 
+    car_line_seen_recover_ticks = 0u;
+    if(car_line_lost_ticks < 0xFFFFu)
+    {
+        car_line_lost_ticks++;
+    }
+    if(car_line_lost_ticks >= CAR_OPENMV_LINE_LOST_WARN_TICKS)
+    {
+        CarDiag_RecordThrottled(CAR_DIAG_OPENMV_STALE, (u8)(car_line_lost_ticks & 0xFFu), 2u, 0u, CAR_DIAG_FAULT_THROTTLE_MS);
+    }
+#if CAR_OPENMV_LINE_LOST_LOW_SPEED_ENABLED
     out->left_speed = CAR_OPENMV_LINE_LOST_SPEED;
     out->right_speed = CAR_OPENMV_LINE_LOST_SPEED;
+#else
+    out->left_speed = 0;
+    out->right_speed = 0;
+#endif
     out->event = CAR_LINE_EVENT_LINE_LOST;
     return 1u;
 }

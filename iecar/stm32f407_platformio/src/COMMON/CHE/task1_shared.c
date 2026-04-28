@@ -1,3 +1,6 @@
+#include "task1.h"
+#include "car_mainchain.h"
+#include "task_strategy_common.h"
 #include "../STRATEGY/task_runtime_common_shared.h"
 
 typedef enum
@@ -21,12 +24,25 @@ typedef struct
     u8 turn_dir;
 } task1_context_t;
 
+static const task_runtime_state_desc_t task1_state_desc[] =
+{
+    {(u8)TASK1_STATE_SCAN, "TASK1_STATE_SCAN", 0u, CAR_K210_SCAN_SAMPLE_MS},
+    {(u8)TASK1_STATE_WAIT_START, "TASK1_STATE_WAIT_START", 0u, 0u},
+    {(u8)TASK1_STATE_MAIN_LOOP, "TASK1_STATE_MAIN_LOOP", 1u, 0u},
+    {(u8)TASK1_STATE_WAIT_RETURN_BUTTON, "TASK1_STATE_WAIT_RETURN_BUTTON", 0u, 0u},
+    {(u8)TASK1_STATE_TURN_ACTION, "TASK1_STATE_TURN_ACTION", 1u, 0u},
+    {(u8)TASK1_STATE_UTURN_ACTION, "TASK1_STATE_UTURN_ACTION", 1u, 0u},
+    {(u8)TASK1_STATE_SAFE_STOP, "TASK1_STATE_SAFE_STOP", 0u, 0u},
+    {(u8)TASK1_STATE_COMPLETE_STOP, "TASK1_STATE_COMPLETE_STOP", 0u, 0u},
+};
+
+
 static task1_context_t g_task1_ctx = {TASK1_STATE_SCAN, TASK1_STATE_SCAN, {0,0,0}, 0, 0};
 
 static void Task1_EnterState(task1_state_t state)
 {
     g_task1_ctx.state = state;
-    TaskRuntime_RecordState(1u, (u8)state, 0u);
+    TaskRuntime_RecordStateFromTable(1u, task1_state_desc, (u8)(sizeof(task1_state_desc) / sizeof(task1_state_desc[0])), (u8)state, 0u);
     TaskRuntime_MarkEntered(&g_task1_ctx.clock_state);
 }
 
@@ -37,8 +53,14 @@ static void Task1_ClearK210Votes(void)
 
 static void Task1_RequestSafeStop(const char *reason)
 {
-    TaskRuntime_EnterSafeStop("T1", reason);
+    TaskRuntime_EnterSafeStopForTask(1u, 0u, "T1", reason);
     Task1_EnterState(TASK1_STATE_SAFE_STOP);
+}
+
+static void Task1_RequestCompleteStop(const char *reason, u8 result_code)
+{
+    TaskRuntime_EnterCompleteStopForTask(1u, result_code, "T1C", reason);
+    Task1_EnterState(TASK1_STATE_COMPLETE_STOP);
 }
 
 static u8 Task1_RecordTurn(u8 step)
@@ -205,9 +227,7 @@ void TASK1_GO(void)
                     }
                     if(line_output.event == CAR_LINE_EVENT_STATION)
                     {
-                        RGB_EN(GREEN);
-                        CAR_STOP();
-                        Task1_EnterState(TASK1_STATE_COMPLETE_STOP);
+                        Task1_RequestCompleteStop("ret", 1u);
                         break;
                     }
                     if(Car_LineEventIsVisionFault(line_output.event))
@@ -299,7 +319,7 @@ void TASK1_GO(void)
                     }
                     else
                     {
-                        Task1_EnterState(TASK1_STATE_COMPLETE_STOP);
+                        Task1_RequestCompleteStop("done", 2u);
                     }
                 }
                 else

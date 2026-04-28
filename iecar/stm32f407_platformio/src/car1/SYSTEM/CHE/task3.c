@@ -15,11 +15,11 @@ typedef enum
 
 static const task_runtime_state_desc_t task3_state_desc[] =
 {
-    {(u8)TASK3_STATE_SCAN, "TASK3_STATE_SCAN"},
-    {(u8)TASK3_STATE_MAIN_LOOP, "TASK3_STATE_MAIN_LOOP"},
-    {(u8)TASK3_STATE_TURN_ACTION, "TASK3_STATE_TURN_ACTION"},
-    {(u8)TASK3_STATE_SAFE_STOP, "TASK3_STATE_SAFE_STOP"},
-    {(u8)TASK3_STATE_COMPLETE_STOP, "TASK3_STATE_COMPLETE_STOP"},
+    {(u8)TASK3_STATE_SCAN, "TASK3_STATE_SCAN", 0u, CAR_K210_SCAN_SAMPLE_MS},
+    {(u8)TASK3_STATE_MAIN_LOOP, "TASK3_STATE_MAIN_LOOP", 1u, 0u},
+    {(u8)TASK3_STATE_TURN_ACTION, "TASK3_STATE_TURN_ACTION", 1u, 0u},
+    {(u8)TASK3_STATE_SAFE_STOP, "TASK3_STATE_SAFE_STOP", 0u, 0u},
+    {(u8)TASK3_STATE_COMPLETE_STOP, "TASK3_STATE_COMPLETE_STOP", 0u, 0u},
 };
 
 typedef struct
@@ -42,8 +42,14 @@ static void Task3_EnterState(task3_state_t state)
 
 static void Task3_RequestSafeStop(const char *reason)
 {
-    TaskRuntime_EnterSafeStop("T3", reason);
+    TaskRuntime_EnterSafeStopForTask(3u, 0u, "T3", reason);
     Task3_EnterState(TASK3_STATE_SAFE_STOP);
+}
+
+static void Task3_RequestCompleteStop(const char *reason, u8 result_code)
+{
+    TaskRuntime_EnterCompleteStopForTask(3u, result_code, "T3C", reason);
+    Task3_EnterState(TASK3_STATE_COMPLETE_STOP);
 }
 
 static u8 Task3_RecordTurn(u8 step)
@@ -185,7 +191,7 @@ void TASK3_GO(void)
                     {
                         RGB_EN(GREEN);
                         CAR_STOP();
-                        Task3_EnterState(TASK3_STATE_COMPLETE_STOP);
+                        Task3_RequestCompleteStop("done", 1u);
                         break;
                     }
                     if(Car_LineEventIsVisionFault(line_output.event))

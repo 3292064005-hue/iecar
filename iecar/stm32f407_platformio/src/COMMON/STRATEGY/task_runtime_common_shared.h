@@ -14,6 +14,8 @@ typedef struct
 {
     u8 state_id;
     const char *name;
+    u8 is_motion_state;
+    u32 timeout_ms;
 } task_runtime_state_desc_t;
 
 static inline const task_runtime_state_desc_t *TaskRuntime_FindStateDesc(const task_runtime_state_desc_t *table, u8 count, u8 state_id)
@@ -38,8 +40,21 @@ static inline const task_runtime_state_desc_t *TaskRuntime_FindStateDesc(const t
  * 入参: task_id 为任务号；table/count 为状态描述表；state_id 为目标状态；reason_code 为转移原因。
  * 出参: 返回 1 表示目标状态存在于状态表，返回 0 表示状态未登记但仍会记录诊断。
  * 异常: table 为空或状态未登记时不阻塞任务主链路，只暴露诊断结果。
- * 边界: 本函数只做状态登记与诊断，不修改调用方状态变量。
+ * 边界: 本函数只做状态登记与诊断，不修改调用方状态变量；表项同时登记运动态标记与通用超时策略。
  */
+
+static inline u8 TaskRuntime_StateIsMotion(const task_runtime_state_desc_t *table, u8 count, u8 state_id)
+{
+    const task_runtime_state_desc_t *desc = TaskRuntime_FindStateDesc(table, count, state_id);
+    return (desc != 0) ? desc->is_motion_state : 0u;
+}
+
+static inline u32 TaskRuntime_StateTimeoutMs(const task_runtime_state_desc_t *table, u8 count, u8 state_id)
+{
+    const task_runtime_state_desc_t *desc = TaskRuntime_FindStateDesc(table, count, state_id);
+    return (desc != 0) ? desc->timeout_ms : 0u;
+}
+
 static inline u8 TaskRuntime_RecordStateFromTable(u8 task_id,
                                                   const task_runtime_state_desc_t *table,
                                                   u8 count,
@@ -105,13 +120,41 @@ static inline void TaskRuntime_ShowReason(const char *prefix, const char *reason
     OLED_ShowString(0, 6, sss, 16);
 }
 
-static inline void TaskRuntime_EnterSafeStop(const char *prefix, const char *reason)
+/*
+ * 功能: 统一进入安全停车终态，记录任务号、故障原因并执行停车/红灯动作。
+ * 入参: task_id 为任务号；reason_code 为可用于回放的故障编码；prefix/reason 用于 OLED 简短显示。
+ * 出参: 无。
+ * 异常: 空 prefix/reason 不影响停车动作；诊断 ring 满时按环形缓存覆盖策略处理。
+ * 边界: 本函数只处理终态动作，不修改调用方状态枚举，状态切换必须由任务自己的 EnterState 完成。
+ */
+static inline void TaskRuntime_EnterSafeStopForTask(u8 task_id, u8 reason_code, const char *prefix, const char *reason)
 {
     TaskRuntime_ShowReason(prefix, reason);
     CAR_STOP();
     RGB_EN(RED);
     flag_go = 0;
-    CarDiag_Record(CAR_DIAG_TASK_SAFE_STOP, 0u, 0u, 0u);
+    CarDiag_Record(CAR_DIAG_TASK_SAFE_STOP, task_id, reason_code, 0u);
+}
+
+/*
+ * 功能: 统一进入正常完成停车终态，记录任务号、完成原因并执行停车/绿灯动作。
+ * 入参: task_id 为任务号；reason_code 为完成路径编码；prefix/reason 用于 OLED 简短显示。
+ * 出参: 无。
+ * 异常: 空 prefix/reason 不影响停车动作；诊断 ring 满时按环形缓存覆盖策略处理。
+ * 边界: 本函数只处理完成动作，不修改调用方状态枚举，状态切换必须由任务自己的 EnterState 完成。
+ */
+static inline void TaskRuntime_EnterCompleteStopForTask(u8 task_id, u8 reason_code, const char *prefix, const char *reason)
+{
+    TaskRuntime_ShowReason(prefix, reason);
+    CAR_STOP();
+    RGB_EN(GREEN);
+    flag_go = 0;
+    CarDiag_Record(CAR_DIAG_TASK_COMPLETE, task_id, reason_code, 0u);
+}
+
+static inline void TaskRuntime_EnterSafeStop(const char *prefix, const char *reason)
+{
+    TaskRuntime_EnterSafeStopForTask(0u, 0u, prefix, reason);
 }
 
 #endif /* TASK_RUNTIME_COMMON_SHARED_H__ */

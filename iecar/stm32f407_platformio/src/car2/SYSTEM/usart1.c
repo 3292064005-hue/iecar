@@ -1,4 +1,8 @@
 #include "usart1.h"
+#include "ctrl_num.h"
+#include "protocol_core_shared.h"
+
+static car_protocol_stream_parser_t car2_usart1_debug_stream;
 
 void usart_1_init(u32 bound)
 {
@@ -73,10 +77,26 @@ void USART1_IRQHandler(void)
 	{
 		clear = USART1->SR;
 		clear = USART1->DR;
+		(void)clear;
 		if(Rx_Overflow == 0)
 		{
 			USART1_RX_BUF[0] = Rx_Sta - 1;
-			CarLink_ProcessFrame(&USART1_RX_BUF[1], USART1_RX_BUF[0], 0);
+#if CAR_LINK_USART1_DEBUG_RX_ENABLED
+			/* Intentional debug compatibility inlet: ISR only frames and enqueues; no ACK or business parsing is done here. */
+			{
+				u8 i;
+				u8 wire[CAR_LINK_FRAME_SIZE];
+				for(i = 0u; i < USART1_RX_BUF[0]; ++i)
+				{
+					if(CarProtocol_StreamFeedCarLinkByte(&car2_usart1_debug_stream,
+					                                 USART1_RX_BUF[(u8)(i + 1u)],
+					                                 wire))
+					{
+						(void)CarLink_SubmitRxFrameFromIsrEx(wire, CAR_LINK_FRAME_SIZE, 0u);
+					}
+				}
+			}
+#endif
 		}
 		else
 		{
@@ -90,7 +110,9 @@ void USART1_IRQHandler(void)
 
 
 //´,֧printf,Ҫѡuse MicroLIB	  
-#pragma import(__use_no_semihosting)             
+#if defined(__CC_ARM)
+#pragma import(__use_no_semihosting)
+#endif
 //׼Ҫֺ֧                 
 struct __FILE 
 { 

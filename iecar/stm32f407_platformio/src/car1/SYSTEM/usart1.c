@@ -1,4 +1,5 @@
 #include "usart1.h"
+#include "V7_data_deal.h"
 
 void usart_1_init(u32 bound)
 {
@@ -73,6 +74,7 @@ void USART1_IRQHandler(void)
 	{
 		clear = USART1->SR;
 		clear = USART1->DR;
+		(void)clear;
 		USART1_RX_BUF[0] = Rx_Sta - 1;
 		Rx_Sta = 1;
 		USART1_Data_Count(USART1_RX_BUF);
@@ -82,7 +84,9 @@ void USART1_IRQHandler(void)
 
 
 //´,֧printf,Ҫѡuse MicroLIB	  
-#pragma import(__use_no_semihosting)             
+#if defined(__CC_ARM)
+#pragma import(__use_no_semihosting)
+#endif
 //׼Ҫֺ֧                 
 struct __FILE 
 { 

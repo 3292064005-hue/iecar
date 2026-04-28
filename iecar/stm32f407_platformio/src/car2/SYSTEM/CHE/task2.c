@@ -19,15 +19,15 @@ typedef enum
 
 static const task_runtime_state_desc_t task2_state_desc[] =
 {
-    {(u8)TASK2_STATE_WAIT_DETECT, "TASK2_STATE_WAIT_DETECT"},
-    {(u8)TASK2_STATE_WAIT_START, "TASK2_STATE_WAIT_START"},
-    {(u8)TASK2_STATE_MAIN_LOOP, "TASK2_STATE_MAIN_LOOP"},
-    {(u8)TASK2_STATE_WAIT_REMOTE_LEAVE, "TASK2_STATE_WAIT_REMOTE_LEAVE"},
-    {(u8)TASK2_STATE_POST_LEAVE_DELAY, "TASK2_STATE_POST_LEAVE_DELAY"},
-    {(u8)TASK2_STATE_TURN_ACTION, "TASK2_STATE_TURN_ACTION"},
-    {(u8)TASK2_STATE_UTURN_ACTION, "TASK2_STATE_UTURN_ACTION"},
-    {(u8)TASK2_STATE_COMPLETE_STOP, "TASK2_STATE_COMPLETE_STOP"},
-    {(u8)TASK2_STATE_SAFE_STOP, "TASK2_STATE_SAFE_STOP"},
+    {(u8)TASK2_STATE_WAIT_DETECT, "TASK2_STATE_WAIT_DETECT", 0u, 0u},
+    {(u8)TASK2_STATE_WAIT_START, "TASK2_STATE_WAIT_START", 0u, 0u},
+    {(u8)TASK2_STATE_MAIN_LOOP, "TASK2_STATE_MAIN_LOOP", 1u, 0u},
+    {(u8)TASK2_STATE_WAIT_REMOTE_LEAVE, "TASK2_STATE_WAIT_REMOTE_LEAVE", 0u, 0u},
+    {(u8)TASK2_STATE_POST_LEAVE_DELAY, "TASK2_STATE_POST_LEAVE_DELAY", 0u, 0u},
+    {(u8)TASK2_STATE_TURN_ACTION, "TASK2_STATE_TURN_ACTION", 1u, 0u},
+    {(u8)TASK2_STATE_UTURN_ACTION, "TASK2_STATE_UTURN_ACTION", 1u, 0u},
+    {(u8)TASK2_STATE_COMPLETE_STOP, "TASK2_STATE_COMPLETE_STOP", 0u, 0u},
+    {(u8)TASK2_STATE_SAFE_STOP, "TASK2_STATE_SAFE_STOP", 0u, 0u},
 };
 
 typedef enum
@@ -75,8 +75,7 @@ static void Task2_EnterState(task2_state_t state)
 static void Task2_RequestSafeStop(const char *reason)
 {
     g_task2_ctx.result = TASK2_RESULT_LOCAL_FAIL;
-    TaskRuntime_RecordSafeStop(2u, 0u);
-    TaskRuntime_EnterSafeStop("T2", reason);
+    TaskRuntime_EnterSafeStopForTask(2u, 0u, "T2", reason);
     g_task2_ctx.next_state = TASK2_STATE_SAFE_STOP;
     Task2_EnterState(TASK2_STATE_SAFE_STOP);
 }
@@ -92,11 +91,7 @@ static void Task2_RequestCompleteStop(const char *reason, task2_completion_resul
 {
     g_task2_ctx.result = result;
     g_task2_ctx.complete_reason = reason;
-    TaskRuntime_RecordComplete(2u, (u8)result);
-    TaskRuntime_ShowReason("T2C", reason);
-    CAR_STOP();
-    RGB_EN(GREEN);
-    flag_go = 0;
+    TaskRuntime_EnterCompleteStopForTask(2u, (u8)result, "T2C", reason);
     Task2_EnterState(TASK2_STATE_COMPLETE_STOP);
 }
 

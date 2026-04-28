@@ -4,8 +4,8 @@
 
 - `stm32f407_platformio/src/COMMON/CHE/protocol_contract_generated.h`
 - `stm32f407_platformio/include/protocol_contract_host.h`
-- `k210代码/protocol_contract.py`
-- `opemv代码/protocol_contract.py`
+- `k210_code/protocol_contract.py`
+- `openmv_code/protocol_contract.py`
 
 `./tools/check_static.sh quick` 会执行 `generate_protocol_contract.py --check`，若任一生成物与单源配置不一致则失败。
 
@@ -68,3 +68,15 @@ STM32 本地 RX buffer 对应 13 字节：`buf[0] = 12`，`buf[1..12] = wire[0..
 | 10 | `0xCC` |
 
 角色矩阵：car1 可向 car2 发送 `SET_DETECT`、`LEAVE`、`GO`；两端均可发送 `HEARTBEAT` 和 `ACK`。重复业务帧按 seq 幂等处理：补发 ACK，但不重复写业务 flag。
+
+## Receive service model
+
+- K210 and OpenMV RXNE paths feed bytes into `CarProtocol_StreamFeedByte`, which can resynchronize after noise prefixes and handle frames split across receive interrupts. The existing fixed-buffer parsers remain the final authority for field extraction and compatibility checks.
+- USART2 CarLink RXNE/IDLE handling does not execute business logic directly. `U2_DATA_DEAL()` submits bytes through the stream parser and enqueues complete candidate frames. `CarLink_ServiceRx()` performs validation and event emission outside ISR context.
+- ACK frames are queued by `CarLink_SendAck()` and sent by `CarLink_ServiceTxQueue()` from non-ISR context.
+- car2 USART1 no-ACK CarLink input is a debug compatibility inlet. When `CAR_LINK_USART1_DEBUG_RX_ENABLED` is enabled, the ISR only frames bytes and submits them with `send_ack=0`; `CarLink_ServiceRx()` performs the actual parsing outside interrupt context.
+
+
+## CarLink stream boundary
+
+CarLink reception uses `CarProtocol_StreamFeedCarLinkByte()` before queue submission. The helper accepts current checksum/version frames and legacy no-checksum frames, and it performs sliding-window resync on bad tail/checksum/version frames before business parsing runs in `CarLink_ServiceRx()`.

@@ -1,3 +1,5 @@
+#include "MOTOR_CTRL.h"
+#include "car_mainchain.h"
 PID_wz M_SP1;
 PID_wz M_SP2;
 
@@ -32,47 +34,47 @@ void MOTOR_PID(void)
 }
 
 
-// Î»ÖÃÊ½PID¿ØÖÆ
+// Î»Ê½PID
 float PID_WZ_M1(float pid_now,float pid_anti)
 {
-    M_SP1.err =pid_anti-pid_now; // ¼ÆËãµ±Ç°Îó²î
-    if(1) //¿ªÆô»ý·ÖÌõ¼þ
-		{M_SP1.integral += M_SP1.err;      //Çó³öÆ«²îµÄ»ý·Ö
-		if(0)//¿ªÆô»ý·ÖÏÞ·ù
-			{if(M_SP1.integral >= M_SP1.itl_lim_up){M_SP1.integral =  M_SP1.itl_lim_up;}//»ý·ÖÏÞ·ù
+    M_SP1.err =pid_anti-pid_now; // ãµ±Ç°
+    if(1) //
+		{M_SP1.integral += M_SP1.err;      //Æ«Ä»
+		if(0)//Þ·
+			{if(M_SP1.integral >= M_SP1.itl_lim_up){M_SP1.integral =  M_SP1.itl_lim_up;}//Þ·
 			else if(M_SP1.integral <= M_SP1.itl_lim_dn){M_SP1.integral =  M_SP1.itl_lim_dn;}}
 		}
-			else M_SP1.integral=0;//²»¿ªÆô»ý·Ö£¬»ý·ÖÖµÎª0
+			else M_SP1.integral=0;//Ö£ÖµÎª0
 		
 		M_SP1.dif=M_SP1.err-M_SP1.err_last;
-    M_SP1.out = M_SP1.kp*M_SP1.err + M_SP1.ki*M_SP1.integral + M_SP1.kd*M_SP1.dif;   //Î»ÖÃÊ½PID¿ØÖÆÆ÷
-    M_SP1.err_last = M_SP1.err;   //±£´æÉÏÒ»´ÎÆ«²î 
+    M_SP1.out = M_SP1.kp*M_SP1.err + M_SP1.ki*M_SP1.integral + M_SP1.kd*M_SP1.dif;   //Î»Ê½PID
+    M_SP1.err_last = M_SP1.err;   //Ò»Æ« 
 		
 		
-		if(1){//ÊÇ·ñÊä³öÏÞ·ù
-    if(M_SP1.out >= M_SP1.limit_up){M_SP1.out =  M_SP1.limit_up;}//Êä³öÏÞ·ù
+		if(1){//Ç·Þ·
+    if(M_SP1.out >= M_SP1.limit_up){M_SP1.out =  M_SP1.limit_up;}//Þ·
 		else if(M_SP1.out <= M_SP1.limit_dn){M_SP1.out =  M_SP1.limit_dn;}}
 		return M_SP1.out;
 }
-// Î»ÖÃÊ½PID¿ØÖÆ
+// Î»Ê½PID
 float PID_WZ_M2(float pid_now,float pid_anti)
 {
-    M_SP2.err =pid_anti-pid_now; // ¼ÆËãµ±Ç°Îó²î
-    if(1) //¿ªÆô»ý·ÖÌõ¼þ
-		{M_SP2.integral += M_SP2.err;      //Çó³öÆ«²îµÄ»ý·Ö
-		if(0)//¿ªÆô»ý·ÖÏÞ·ù
-			{if(M_SP2.integral >= M_SP2.itl_lim_up){M_SP2.integral =  M_SP2.itl_lim_up;}//»ý·ÖÏÞ·ù
+    M_SP2.err =pid_anti-pid_now; // ãµ±Ç°
+    if(1) //
+		{M_SP2.integral += M_SP2.err;      //Æ«Ä»
+		if(0)//Þ·
+			{if(M_SP2.integral >= M_SP2.itl_lim_up){M_SP2.integral =  M_SP2.itl_lim_up;}//Þ·
 			else if(M_SP2.integral <= M_SP2.itl_lim_dn){M_SP2.integral =  M_SP2.itl_lim_dn;}}
 		}
-			else M_SP2.integral=0;//²»¿ªÆô»ý·Ö£¬»ý·ÖÖµÎª0
+			else M_SP2.integral=0;//Ö£ÖµÎª0
 		
 		M_SP2.dif=M_SP2.err-M_SP2.err_last;
-    M_SP2.out = M_SP2.kp*M_SP2.err + M_SP2.ki*M_SP2.integral + M_SP2.kd*M_SP2.dif;   //Î»ÖÃÊ½PID¿ØÖÆÆ÷
-    M_SP2.err_last = M_SP2.err;   //±£´æÉÏÒ»´ÎÆ«²î 
+    M_SP2.out = M_SP2.kp*M_SP2.err + M_SP2.ki*M_SP2.integral + M_SP2.kd*M_SP2.dif;   //Î»Ê½PID
+    M_SP2.err_last = M_SP2.err;   //Ò»Æ« 
 		
 		
-		if(1){//ÊÇ·ñÊä³öÏÞ·ù
-    if(M_SP2.out >= M_SP2.limit_up){M_SP2.out =  M_SP2.limit_up;}//Êä³öÏÞ·ù
+		if(1){//Ç·Þ·
+    if(M_SP2.out >= M_SP2.limit_up){M_SP2.out =  M_SP2.limit_up;}//Þ·
 		else if(M_SP2.out <= M_SP2.limit_dn){M_SP2.out =  M_SP2.limit_dn;}}
 		return M_SP2.out;
 }

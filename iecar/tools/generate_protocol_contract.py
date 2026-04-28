@@ -13,8 +13,8 @@ import protocol_contract as pc
 TARGETS = {
     ROOT / 'stm32f407_platformio/src/COMMON/CHE/protocol_contract_generated.h': pc.render_c_generated_header,
     ROOT / 'stm32f407_platformio/include/protocol_contract_host.h': pc.render_host_header,
-    ROOT / 'k210代码/protocol_contract.py': lambda: pc.render_device_python('k210'),
-    ROOT / 'opemv代码/protocol_contract.py': lambda: pc.render_device_python('openmv'),
+    ROOT / 'k210_code/protocol_contract.py': lambda: pc.render_device_python('k210'),
+    ROOT / 'openmv_code/protocol_contract.py': lambda: pc.render_device_python('openmv'),
 }
 
 
@@ -45,4 +45,4 @@ def main() -> int:
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    sys.exit(main())

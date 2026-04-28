@@ -23,15 +23,15 @@ typedef enum
 
 static const task_runtime_state_desc_t task2_state_desc[] =
 {
-    {(u8)TASK2_STATE_SCAN, "TASK2_STATE_SCAN"},
-    {(u8)TASK2_STATE_WAIT_START, "TASK2_STATE_WAIT_START"},
-    {(u8)TASK2_STATE_MAIN_LOOP, "TASK2_STATE_MAIN_LOOP"},
-    {(u8)TASK2_STATE_WAIT_TX_RESULT, "TASK2_STATE_WAIT_TX_RESULT"},
-    {(u8)TASK2_STATE_WAIT_REMOTE_RELEASE_BUTTON, "TASK2_STATE_WAIT_REMOTE_RELEASE_BUTTON"},
-    {(u8)TASK2_STATE_TURN_ACTION, "TASK2_STATE_TURN_ACTION"},
-    {(u8)TASK2_STATE_UTURN_ACTION, "TASK2_STATE_UTURN_ACTION"},
-    {(u8)TASK2_STATE_SAFE_STOP, "TASK2_STATE_SAFE_STOP"},
-    {(u8)TASK2_STATE_COMPLETE_STOP, "TASK2_STATE_COMPLETE_STOP"},
+    {(u8)TASK2_STATE_SCAN, "TASK2_STATE_SCAN", 0u, CAR_K210_SCAN_SAMPLE_MS},
+    {(u8)TASK2_STATE_WAIT_START, "TASK2_STATE_WAIT_START", 0u, 0u},
+    {(u8)TASK2_STATE_MAIN_LOOP, "TASK2_STATE_MAIN_LOOP", 1u, 0u},
+    {(u8)TASK2_STATE_WAIT_TX_RESULT, "TASK2_STATE_WAIT_TX_RESULT", 0u, 0u},
+    {(u8)TASK2_STATE_WAIT_REMOTE_RELEASE_BUTTON, "TASK2_STATE_WAIT_REMOTE_RELEASE_BUTTON", 0u, CAR_REMOTE_SIGNAL_TIMEOUT_MS},
+    {(u8)TASK2_STATE_TURN_ACTION, "TASK2_STATE_TURN_ACTION", 1u, 0u},
+    {(u8)TASK2_STATE_UTURN_ACTION, "TASK2_STATE_UTURN_ACTION", 1u, 0u},
+    {(u8)TASK2_STATE_SAFE_STOP, "TASK2_STATE_SAFE_STOP", 0u, 0u},
+    {(u8)TASK2_STATE_COMPLETE_STOP, "TASK2_STATE_COMPLETE_STOP", 0u, 0u},
 };
 
 typedef struct
@@ -60,8 +60,14 @@ static void Task2_ClearK210Votes(void)
 
 static void Task2_RequestSafeStop(const char *reason)
 {
-    TaskRuntime_EnterSafeStop("T2", reason);
+    TaskRuntime_EnterSafeStopForTask(2u, 0u, "T2", reason);
     Task2_EnterState(TASK2_STATE_SAFE_STOP);
+}
+
+static void Task2_RequestCompleteStop(const char *reason, u8 result_code)
+{
+    TaskRuntime_EnterCompleteStopForTask(2u, result_code, "T2C", reason);
+    Task2_EnterState(TASK2_STATE_COMPLETE_STOP);
 }
 
 static u8 Task2_RecordTurn(u8 step)
@@ -175,6 +181,11 @@ static void Task2_ServiceTxState(void)
     if(CarLink_GetTxState() == CAR_LINK_TX_SUCCESS)
     {
         CarLink_ClearTxState();
+        if(g_task2_ctx.next_state == TASK2_STATE_COMPLETE_STOP)
+        {
+            Task2_RequestCompleteStop(g_task2_ctx.tx_reason ? g_task2_ctx.tx_reason : "done", 2u);
+            return;
+        }
         if(g_task2_ctx.next_state == TASK2_STATE_UTURN_ACTION)
         {
             g_task2_ctx.clock_state.action_started_ms = 0;
@@ -405,7 +416,7 @@ void TASK2_GO(void)
                     }
                     else
                     {
-                        Task2_EnterState(TASK2_STATE_COMPLETE_STOP);
+                        Task2_RequestCompleteStop("ret", 1u);
                     }
                 }
                 else

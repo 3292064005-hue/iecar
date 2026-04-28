@@ -1,7 +1,27 @@
+#include "car_uart2.h"
+#include "car_mainchain.h"
 #include "protocol_core_shared.h"
 volatile long long int openmv_last_rx_time = 0;
 volatile u8 openmv_has_valid_frame = 0;
 volatile u16 openmv_bad_frame_count = 0;
+#if CAR_OPENMV_USART3_ENABLED
+static car_protocol_stream_parser_t openmv_usart3_stream;
+#endif
+static car_protocol_stream_parser_t openmv_uart4_stream;
+
+static void openmv_copy_wire_frame_to_rxbuf(volatile u8 *buf, const u8 *wire)
+{
+    u8 i;
+    if(buf == 0 || wire == 0)
+    {
+        return;
+    }
+    buf[0] = CAR_OPENMV_FRAME_SIZE;
+    for(i = 0u; i < CAR_OPENMV_FRAME_SIZE; ++i)
+    {
+        buf[(u8)(i + 1u)] = wire[i];
+    }
+}
 
 static void openmv_apply_frame(volatile u8 *buf)
 {
@@ -59,7 +79,8 @@ void USART3_IRQHandler(void)
     uint8_t res;
     uint8_t clear = 0;
     static uint8_t Rx_Sta = 1;
-	static uint8_t Rx_Overflow = 0;
+    static uint8_t Rx_Overflow = 0;
+    static uint8_t Rx_Stream_Delivered = 0;
     if(USART_GetITStatus(USART3, USART_IT_RXNE) != RESET)
     {
         res =USART3->DR;
@@ -68,7 +89,15 @@ void USART3_IRQHandler(void)
         {
             if(Rx_Sta < sizeof(USART3_RX_BUF))
             {
+                u8 wire[CAR_OPENMV_FRAME_SIZE];
                 USART3_RX_BUF[Rx_Sta++] = res;
+                if(CarProtocol_StreamFeedByte(&openmv_usart3_stream, res, CAR_OPENMV_MAGIC0, CAR_OPENMV_MAGIC1, CAR_OPENMV_FRAME_SIZE, CAR_OPENMV_TAIL, 0u, (u8)(CAR_OPENMV_FRAME_SIZE - 2u), (u8)(CAR_OPENMV_FRAME_SIZE - 2u), wire))
+                {
+                    openmv_copy_wire_frame_to_rxbuf(USART3_RX_BUF, wire);
+                    Rx_Stream_Delivered = 1u;
+                    GXT_DATA_DEAL();
+                    Rx_Sta = 1u;
+                }
             }
             else
             {
@@ -85,11 +114,15 @@ void USART3_IRQHandler(void)
     {
         clear = USART3->SR;
         clear = USART3->DR;
+        (void)clear;
 #if CAR_OPENMV_USART3_ENABLED
         if(Rx_Overflow == 0)
         {
             USART3_RX_BUF[0] = Rx_Sta - 1;
-            GXT_DATA_DEAL();
+            if(Rx_Stream_Delivered == 0u && USART3_RX_BUF[0] != 0u)
+            {
+                GXT_DATA_DEAL();
+            }
         }
         else
 #endif
@@ -97,7 +130,13 @@ void USART3_IRQHandler(void)
             USART3_RX_BUF[0] = 0;
             Rx_Overflow = 0;
         }
+        Rx_Stream_Delivered = 0u;
         Rx_Sta = 1;
+#if !CAR_OPENMV_USART3_ENABLED
+        (void)Rx_Sta;
+        (void)Rx_Overflow;
+        (void)Rx_Stream_Delivered;
+#endif
     }
 }
 
@@ -119,7 +158,8 @@ void UART4_IRQHandler(void)
     uint8_t res;
     uint8_t clear = 0;
     static uint8_t Rx_Sta = 1;
-	static uint8_t Rx_Overflow = 0;
+    static uint8_t Rx_Overflow = 0;
+    static uint8_t Rx_Stream_Delivered = 0;
     if(USART_GetITStatus(UART4, USART_IT_RXNE) != RESET)
     {
         res =UART4->DR;
@@ -127,7 +167,17 @@ void UART4_IRQHandler(void)
         {
             if(Rx_Sta < sizeof(USART4_RX_BUF))
             {
+                u8 wire[CAR_OPENMV_FRAME_SIZE];
                 USART4_RX_BUF[Rx_Sta++] = res;
+                if(CarProtocol_StreamFeedByte(&openmv_uart4_stream, res, CAR_OPENMV_MAGIC0, CAR_OPENMV_MAGIC1, CAR_OPENMV_FRAME_SIZE, CAR_OPENMV_TAIL, 0u, (u8)(CAR_OPENMV_FRAME_SIZE - 2u), (u8)(CAR_OPENMV_FRAME_SIZE - 2u), wire))
+                {
+                    openmv_copy_wire_frame_to_rxbuf(USART4_RX_BUF, wire);
+                    Rx_Stream_Delivered = 1u;
+#if CAR_OPENMV_UART4_ENABLED
+                    openmv_apply_frame(USART4_RX_BUF);
+#endif
+                    Rx_Sta = 1u;
+                }
             }
             else
             {
@@ -141,18 +191,23 @@ void UART4_IRQHandler(void)
     {
         clear = UART4->SR;
         clear = UART4->DR;
+        (void)clear;
         if(Rx_Overflow == 0)
         {
             USART4_RX_BUF[0] = Rx_Sta - 1;
+            if(Rx_Stream_Delivered == 0u && USART4_RX_BUF[0] != 0u)
+            {
 #if CAR_OPENMV_UART4_ENABLED
-            openmv_apply_frame(USART4_RX_BUF);
+                openmv_apply_frame(USART4_RX_BUF);
 #endif
+            }
         }
         else
         {
             USART4_RX_BUF[0] = 0;
             Rx_Overflow = 0;
         }
+        Rx_Stream_Delivered = 0u;
         Rx_Sta = 1;
     }
 }

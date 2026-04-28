@@ -7,16 +7,17 @@
 | 路径 | 说明 |
 |---|---|
 | `stm32f407_platformio/` | STM32F407 PlatformIO 工程，含 `car1` / `car2` / `native` 环境 |
-| `k210代码/` | K210 目标识别脚本、模型和标签，运行时导入生成的 `protocol_contract.py` |
-| `opemv代码/` | OpenMV 巡线脚本，运行时导入生成的 `protocol_contract.py` |
+| `k210_code/` | K210 目标识别脚本、模型和标签，运行时导入生成的 `protocol_contract.py` |
+| `openmv_code/` | OpenMV 巡线脚本，运行时导入生成的 `protocol_contract.py` |
 | `tools/` | 协议生成、协议回放、黄金帧验证、静态检查脚本 |
-| `docs/` | 协议规格、维护地图、迁移说明 |
+| `docs/` | 协议规格、架构边界、维护地图、迁移、legacy 与 full-closure 状态说明 |
 
 ## 构建与验证
 
 ```bash
-./tools/check_static.sh quick     # Python 协议/状态回放 + 生成物同步 + wrapper 边界 + host C 测试
-./tools/check_static.sh strict    # quick + pio run -e car1 + pio run -e car2 + pio test -e native
+./tools/check_static.sh quick     # Python 协议/状态回放 + 生成物同步 + 共享实现边界 + include 解析
+./tools/check_static.sh host      # host C 协议核心测试
+./tools/check_static.sh strict    # quick + host-C + pio run -e car1 + pio run -e car2 + pio test -e native
 ```
 
 `strict` 模式要求主机安装 PlatformIO CLI。当前脚本不会把未执行的 PlatformIO 构建伪装成已验证结果。
@@ -40,12 +41,22 @@
 - `stm32f407_platformio/src/COMMON/CHE/protocol_core_shared.h`
 - `docs/protocol_spec.md`
 
-## 本轮架构落地重点
+## 当前架构落地重点
 
-1. Task2 正常完成与安全停车语义分离。
-2. 策略层非法 `detect` 防护，避免未定义移位。
-3. OpenMV 首帧闸门与 K210 可靠性门控补齐。
-4. K210/OpenMV wire frame 增加 version byte，并明确区分 wire frame 与 STM32 RX buffer。
-5. CarLink 增加版本校验、角色矩阵、重复包幂等、兼容 sender role 归一化和诊断计数。
-6. 增加结构化诊断 ring buffer 与高频故障节流。
-7. 增加 quick/strict 两级验证入口、host C 测试和 PlatformIO native 测试入口。
+1. 项目路径已收敛到 ASCII：`k210_code/`、`openmv_code/`、`openmv_code/line_follow.py`。
+2. USART2 中断只提交接收数据；CarLink 解析、事件投递和 ACK 发送由主循环 service 处理。
+3. K210/OpenMV/CarLink 接收路径具备固定帧流式重同步能力，并保留底层 fixed-buffer parser 校验。
+4. Task1/Task2/Task3 终态通过 task-id-aware runtime helper 记录安全停车或正常完成。
+5. car2 USART1 no-ACK CarLink 入口是有意保留的调试兼容入口，由角色配置开关控制。
+6. OpenMV line-lost 低速找线是确认策略，已显式配置化并记录连续丢线计数。
+7. 诊断 ring buffer 增加可消费出口，支持最近记录复制、格式化和 OLED 摘要显示。
+
+## Full-closure 状态
+
+当前方案闭环状态记录在 `docs/full_closure_status.md`。该文档只声明静态/脚本层面已闭合的事项；PlatformIO strict 与实机结果必须由对应环境验证。
+
+
+Validation note: `tools/check_include_resolution.py` is part of quick/static validation and guards the car1/car2 shared-source include graph, including COMMON/PLATFORM and ROLE_SHARED strategy include paths.
+
+
+Host-C protocol regression is available as `./tools/check_static.sh host` or `./tools/run_host_c_tests.sh`; strict mode invokes it after PlatformIO preflight on hosts with `pio`.

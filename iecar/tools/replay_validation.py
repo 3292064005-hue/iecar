@@ -16,8 +16,7 @@ CAR1_TASK2 = STM32 / 'car1' / 'SYSTEM' / 'CHE' / 'task2.c'
 CAR1_TASK3 = STM32 / 'car1' / 'SYSTEM' / 'CHE' / 'task3.c'
 CAR2_TASK2 = STM32 / 'car2' / 'SYSTEM' / 'CHE' / 'task2.c'
 CAR2_TASK3 = STM32 / 'car2' / 'SYSTEM' / 'CHE' / 'task3.c'
-MAIN1 = STM32 / 'car1' / 'USER' / 'main.c'
-MAIN2 = STM32 / 'car2' / 'USER' / 'main.c'
+SHARED_MAIN = STM32 / 'COMMON' / 'ROLE_SHARED' / 'USER' / 'main.c'
 CTRL_NUM = STM32 / 'COMMON' / 'CHE' / 'ctrl_num_shared.c'
 CTRL_HDR_SHARED = STM32 / 'COMMON' / 'CHE' / 'ctrl_num_shared.h'
 BOOTSTRAP_SHARED = STM32 / 'COMMON' / 'STRATEGY' / 'task_bootstrap_common_shared.h'
@@ -27,6 +26,20 @@ CAR_DIAG_SHARED = STM32 / 'COMMON' / 'CHE' / 'car_diag_shared.h'
 
 def read(path: Path) -> str:
     return path.read_text(encoding='utf-8', errors='ignore')
+
+
+def read_with_local_includes(path: Path) -> str:
+    text = read(path)
+    merged = [text]
+    for inc in re.findall(r'#include\s+"([^"<>]+)"', text):
+        target = (path.parent / inc).resolve()
+        try:
+            target.relative_to(ROOT.resolve())
+        except ValueError:
+            continue
+        if target.exists() and target.suffix == '.c':
+            merged.append(read(target))
+    return '\n'.join(merged)
 
 
 def parse_numeric_macros(path: Path) -> dict[str, int]:
@@ -223,13 +236,19 @@ def parse_k210_reliable(cfg: dict[str, int], frame: list[int], now_ms: int, rx_m
 def test_role_contracts() -> None:
     car1 = read(CAR1_CFG)
     car2 = read(CAR2_CFG)
-    main1 = read(MAIN1)
-    main2 = read(MAIN2)
+    shared_main = read(SHARED_MAIN)
+    platformio_ini = read(ROOT / 'stm32f407_platformio' / 'platformio.ini')
     assert_true('CAR_ALLOWED_TASK_MASK        (CAR_TASK_MASK_TASK1 | CAR_TASK_MASK_TASK2)' in car1, 'car1 allowed task mask mismatch')
     assert_true('CAR_LEGACY_TASK_MASK         (CAR_TASK_MASK_TASK3)' in car1, 'car1 legacy task mask mismatch')
     assert_true('CAR_ALLOWED_TASK_MASK        (CAR_TASK_MASK_TASK2 | CAR_TASK_MASK_TASK3)' in car2, 'car2 allowed task mask mismatch')
-    assert_true('TaskBootstrap_ReadSelector' in main1 and 'TaskBootstrap_DispatchTaskWithContract' in main1, 'car1 main missing bootstrap contract')
-    assert_true('TaskBootstrap_ReadSelector' in main2 and 'TaskBootstrap_DispatchTaskWithContract' in main2, 'car2 main missing bootstrap contract')
+    assert_true(not (STM32 / 'car1' / 'USER' / 'main.c').exists(), 'car1 role-local main.c wrapper should be removed')
+    assert_true(not (STM32 / 'car2' / 'USER' / 'main.c').exists(), 'car2 role-local main.c wrapper should be removed')
+    assert_true('+<COMMON/CHE/*_shared.c>' in platformio_ini, 'shared CHE source filter missing')
+    assert_true('+<COMMON/ROLE_SHARED/USER/*.c>' in platformio_ini, 'shared role USER source filter missing')
+    assert_true('+<COMMON/ROLE_SHARED/SYSTEM/*.c>' in platformio_ini, 'shared role SYSTEM source filter missing')
+    assert_true('TaskBootstrap_ReadSelector' in shared_main and 'TaskBootstrap_DispatchTaskWithContract' in shared_main, 'shared main missing bootstrap contract')
+    assert_true('#include "car_mainchain.h"' in shared_main and '#include "task_bootstrap_common.h"' in shared_main, 'shared main must use role include-path headers')
+    assert_true('../SYSTEM/' not in shared_main, 'shared main contains role-relative includes that break from COMMON/ROLE_SHARED')
     assert_true('task_bootstrap_entry_t' in read(BOOTSTRAP_SHARED), 'bootstrap shared layer missing')
 
 
@@ -245,7 +264,7 @@ def test_k210_contract(common: dict[str, int]) -> None:
     assert_true('K210_GetObservation' in k210_src and 'K210_ObservationIsReliable' in k210_src, 'K210 observation API missing')
     assert_true('CarProtocol_ParseK210RxBuffer' in k210_src, 'K210 parser not using shared protocol core')
     assert_true('k210_reset_counter_array(counter);' in k210_src, 'K210 invalid/low-confidence frame does not clear stale vote counters')
-    assert_true('PROTOCOL_VERSION_BYTE' in read(ROOT / 'k210代码' / 'boot.py'), 'K210 wire frame version byte missing')
+    assert_true('PROTOCOL_VERSION_BYTE' in read(ROOT / 'k210_code' / 'boot.py'), 'K210 wire frame version byte missing')
 
 
 
@@ -255,28 +274,38 @@ def test_openmv_first_frame_contract(common: dict[str, int]) -> None:
     car_ctrl = read(STM32 / 'COMMON' / 'CHE' / 'car_ctrl_shared.c')
     assert_true('openmv_has_valid_frame' in uart2, 'OpenMV first-frame gate missing')
     assert_true('CarProtocol_ParseOpenMVRxBuffer' in uart2, 'OpenMV parser not using shared protocol core')
-    assert_true('PROTOCOL_VERSION_BYTE' in read(ROOT / 'opemv代码' / '巡线.py'), 'OpenMV wire frame version byte missing')
+    assert_true('PROTOCOL_VERSION_BYTE' in read(ROOT / 'openmv_code' / 'line_follow.py'), 'OpenMV wire frame version byte missing')
     assert_true('OpenMV_GetStatus' in uart2, 'OpenMV status API missing')
-    assert_true('CAR_LINE_EVENT_OPENMV_NO_FRAME' in read(STM32 / 'car1' / 'SYSTEM' / 'CHE' / 'car_ctrl.h'), 'line no-frame event missing')
+    assert_true('CAR_LINE_EVENT_OPENMV_NO_FRAME' in read(STM32 / 'COMMON' / 'CHE' / 'car_ctrl.h'), 'line no-frame event missing')
     assert_true('Car_LineEventIsVisionFault' in car_ctrl, 'vision fault helper missing')
+    assert_true('car_line_lost_ticks' in car_ctrl and 'CAR_OPENMV_LINE_LOST_LOW_SPEED_ENABLED' in car_ctrl, 'line-lost low-speed policy not surfaced')
     assert_true(common['CAR_OPENMV_REQUIRE_FIRST_FRAME'] == 1, 'OpenMV first-frame gate disabled')
 
 
 def test_diag_contract() -> None:
     diag = read(CAR_DIAG_SHARED)
     assert_true('CAR_DIAG_LINK_DUP' in diag and 'CAR_DIAG_TASK_STATE' in diag, 'diagnostic event enum incomplete')
+    diag_impl = read(STM32 / 'COMMON' / 'CHE' / 'car_diag_shared.c')
     assert_true('CarDiag_RecordThrottled' in diag, 'diagnostic throttling API missing')
+    assert_true('CarDiag_CopyRecent' in diag and 'CarDiag_ShowLatestSummary' in diag, 'diagnostic consumer APIs missing')
+    assert_true('__get_PRIMASK()' in diag_impl and '__set_PRIMASK(primask)' in diag_impl, 'diagnostic critical sections must restore prior IRQ state')
+    assert_true((STM32 / 'COMMON' / 'CHE' / 'car_diag.h').exists(), 'shared diagnostic public header missing')
     for car in ('car1', 'car2'):
-        assert_true((STM32 / car / 'SYSTEM' / 'CHE' / 'car_diag.c').exists(), f'{car} diagnostic wrapper missing')
+        assert_true(not (STM32 / car / 'SYSTEM' / 'CHE' / 'car_diag.c').exists(), f'{car} diagnostic wrapper should be removed')
         mainchain = read(STM32 / car / 'SYSTEM' / 'PLATFORM' / 'car_mainchain.h')
-        assert_true('CAR_MAINCHAIN_DIAG_HEADER' in mainchain, f'{car} diagnostic header missing from mainchain')
+        assert_true('CAR_MAINCHAIN_DIAG_HEADER "car_diag.h"' in mainchain, f'{car} diagnostic header must resolve through common include path')
 
 def test_car_link_contract(common: dict[str, int]) -> None:
     assert_true(common['CAR_LINK_ACK_TIMEOUT_MS'] < common['CAR_LINK_DEGRADED_TIMEOUT_MS'] < common['CAR_LINK_LOST_TIMEOUT_MS'], 'car link timeout ordering invalid')
     ctrl = read(CTRL_NUM)
     hdr = read(CTRL_HDR_SHARED)
     assert_true('CAR_LINK_MSG_HEARTBEAT' in ctrl and 'CarLink_ServiceHeartbeat' in ctrl, 'heartbeat keepalive not implemented')
+    assert_true('CAR_LINK_LOST_TIMEOUT_MS' in ctrl and 'return CAR_LINK_LOST' in ctrl, 'link lost timeout configuration is not wired into health logic')
+    assert_true('CarLink_SubmitRxFrameFromIsr' in ctrl and 'CarLink_ServiceRx' in ctrl, 'USART2 ISR is not decoupled from CarLink service')
+    assert_true('__get_PRIMASK()' in ctrl and '__set_PRIMASK(primask)' in ctrl, 'CarLink RX critical section must restore prior IRQ state')
+    assert_true('CarLink_ConsumeEventType' in ctrl and 'car_link_event_queue' in ctrl, 'CarLink event mailbox missing')
     assert_true('CarLink_ServiceHeartbeat' in hdr, 'heartbeat API not exposed')
+    assert_true('CarLink_ServiceRx' in hdr and 'CarLink_TakeEvent' in hdr, 'CarLink service/event APIs not exposed')
     assert_true('car_link_duplicate_count' in hdr and 'car_link_unauthorized_count' in hdr, 'CarLink diagnostic counters not exposed')
     assert_true('car_link_message_is_allowed' in ctrl and 'car_link_is_duplicate' in ctrl, 'CarLink role/idempotency guards missing')
     assert_true('CarProtocol_NormalizeCarLinkSenderRole' in ctrl, 'CarLink compat sender role normalization missing')
@@ -333,6 +362,8 @@ def test_state_machine_contracts() -> None:
     car2_task2 = read(CAR2_TASK2)
     car2_task3 = read(CAR2_TASK3)
     assert_true('CarLink_ServiceHeartbeat();' in task1, 'task1 missing keepalive service')
+    assert_true('TaskRuntime_RecordStateFromTable' in task1 and 'task1_state_desc' in task1, 'task1 missing unified state table recording')
+    assert_true('is_motion_state' in read(STM32 / 'COMMON' / 'STRATEGY' / 'task_runtime_common_shared.h') and 'timeout_ms' in read(STM32 / 'COMMON' / 'STRATEGY' / 'task_runtime_common_shared.h'), 'task runtime state descriptor missing motion/timeout fields')
     assert_true('TaskLink_ServiceKeepalive("T2")' in car1_task2, 'car1 task2 missing shared link runtime')
     assert_true('TaskLink_ServiceKeepalive("T3")' in car1_task3, 'car1 task3 missing shared link runtime')
     assert_true('TaskLink_WaitForRemoteFlag' in car2_task2, 'car2 task2 missing shared remote-wait runtime')
@@ -347,15 +378,34 @@ def test_state_machine_contracts() -> None:
     assert_true('Task2_RequestSafeStop("stop")' not in car2_task2, 'car2 task2 still maps normal entry stop to safe stop')
     assert_true('K210_ObservationIsReliable(K210_CAMERA_LEFT)' in car2_task3, 'car2 task3 missing K210 reliability gate')
     assert_true('legacy' in car1_task3, 'car1 task3 legacy marker missing')
-    assert_true('TaskLink_ServiceKeepalive' in read(LINK_RUNTIME_SHARED), 'shared link runtime layer missing')
+    link_runtime = read(LINK_RUNTIME_SHARED)
+    assert_true('TaskLink_ServiceKeepalive' in link_runtime, 'shared link runtime layer missing')
+    assert_true('TaskLink_WaitForRemoteMessage' in link_runtime and 'CarLink_ConsumeEventType' in link_runtime, 'remote wait does not consume event mailbox')
 
     assert_true(simulate_wait(5000, 1500) == 'READY', 'state wait replay should complete on scheduled signal')
     assert_true(simulate_wait(3000, None) == 'TIMEOUT', 'state wait replay should timeout without signal')
 
 
 def test_cleanup_contract() -> None:
-    typo_label = ROOT / 'k210代码' / 'lables.txt'
+    allowed_role_che = {'car_project_config.h', 'task2.c', 'task3.c'}
+    for car in ('car1', 'car2'):
+        che_files = {p.name for p in (STM32 / car / 'SYSTEM' / 'CHE').iterdir() if p.is_file()}
+        assert_true(che_files <= allowed_role_che, f'{car} still has residual role-local CHE adapters/headers: {sorted(che_files - allowed_role_che)}')
+        for path in (STM32 / car).rglob('*.c'):
+            assert_true('COMMON/ROLE_SHARED' not in read(path), f'role-local wrapper still includes COMMON/ROLE_SHARED: {path.relative_to(STM32)}')
+            assert_true('COMMON/CHE/' not in read(path), f'role-local C still includes COMMON/CHE implementation: {path.relative_to(STM32)}')
+    typo_label = ROOT / 'k210_code' / 'lables.txt'
     assert_true(not typo_label.exists(), 'duplicate typo labels file should be removed')
+    assert_true((ROOT / 'stm32f407_platformio' / 'test' / 'test_native' / 'test_protocol_contract.cpp').exists(), 'PlatformIO native test path mismatch')
+    platformio_ini = read(ROOT / 'stm32f407_platformio' / 'platformio.ini')
+    assert_true('platformio/ststm32@^19.0.0' in platformio_ini, 'strict PlatformIO STM32 platform constraint is not pinned')
+    assert_true((ROOT / 'tools' / 'platformio_strict_manifest.json').exists(), 'strict PlatformIO manifest missing')
+    ctrl_public = read(STM32 / 'COMMON' / 'CHE' / 'ctrl_num.h')
+    diag_public = read(STM32 / 'COMMON' / 'CHE' / 'car_diag.h')
+    assert_true('../PLATFORM/car_platform.h' not in ctrl_public, 'ctrl_num.h uses stale role-relative platform include after COMMON migration')
+    assert_true('../PLATFORM/car_platform.h' not in diag_public, 'car_diag.h uses stale role-relative platform include after COMMON migration')
+    assert_true('#define CAR_CTRLNUM_PLATFORM_HEADER "car_platform.h"' in ctrl_public, 'ctrl_num.h must resolve platform header through include path')
+    assert_true('#define CAR_DIAG_PLATFORM_HEADER "car_platform.h"' in diag_public, 'car_diag.h must resolve platform header through include path')
 
 
 
@@ -370,11 +420,11 @@ def assert_legacy_detached(project_root: Path) -> None:
         'flycontrol_v1', 'balance_car_bujin', 'one_fly_contorl', 'banqiu',
         'gxt_algorithm', 'fenglibai', 'balance_car'
     ]
+    sysh = (project_root / 'stm32f407_platformio' / 'src' / 'COMMON' / 'ROLE_SHARED' / 'SYSTEM' / 'sys' / 'sys.h').read_text(encoding='utf-8', errors='ignore')
+    for header in removed_headers:
+        if header in sysh:
+            raise AssertionError(f'shared sys.h still imports legacy header: {header}')
     for car_name in ('car1', 'car2'):
-        sysh = (project_root / 'stm32f407_platformio' / 'src' / car_name / 'SYSTEM' / 'sys' / 'sys.h').read_text(encoding='utf-8', errors='ignore')
-        for header in removed_headers:
-            if header in sysh:
-                raise AssertionError(f'{car_name}: sys.h still imports legacy header: {header}')
         for legacy_dir in legacy_dirs:
             if (project_root / 'stm32f407_platformio' / 'src' / car_name / 'SYSTEM' / legacy_dir).exists():
                 raise AssertionError(f'{car_name}: legacy directory still present: {legacy_dir}')
@@ -409,4 +459,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
+    import sys
     main()
+    sys.exit(0)

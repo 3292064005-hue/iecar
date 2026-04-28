@@ -1,3 +1,5 @@
+#include "car_other.h"
+#include "car_mainchain.h"
 int CAR_LEGACY_TURN_SPEED_1=0;
 int CAR_LEGACY_TURN_SPEED_2=0;
 int SPEED_1=0;
